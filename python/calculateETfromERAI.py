@@ -106,6 +106,11 @@ def main(argv):
     # verification si sartDate est une date
     endDate=utils.checkForDate(endDate) 
     
+    if (startDate>endDate):
+        exit('startDate could not be greater than endDate')
+    if (startDate>date(2014,12,31) or endDate>date(2014,12,31) ):
+        exit('date could not exceed 2014-12-31')
+    
     try:
         pathToShapefile
     except NameError:

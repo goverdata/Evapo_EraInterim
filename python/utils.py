@@ -403,7 +403,7 @@ def computeDailyMean(dicoBand,nbBandByDay,typeData):
 
         mean[i]=array
         del array
-        print mask
+
         #utilisation de la fonction nanmean --> bcp plus simple
         mean[i]=mean[i]/mask
         indices = np.where(np.isnan(mean[i]))
