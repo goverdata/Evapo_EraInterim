@@ -218,7 +218,7 @@ def reprojRaster(pathToImg,output,shape,pathToShape):
     Xres=shape[1]
     Yres=shape[0]
     
-    subprocess.call(["gdalwarp","-q","-t_srs",srs.ExportToWkt(),pathToImg,output,'-ts',str(Xres),str(Yres),'-overwrite','-dstnodata',"0"])
+    subprocess.call(["gdalwarp","-q","-s_srs","EPSG:4326","-t_srs",srs.ExportToWkt(),pathToImg,output,'-ts',str(Xres),str(Yres),'-overwrite','-dstnodata',"0"])
     return output
 
 def convertNETCDFtoTIF(inputFile,outputFile,format='float'):
