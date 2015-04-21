@@ -187,7 +187,7 @@ def main(argv):
     
     
     """ altitude de la grille EraInterim """
-    # Only Forcast possiblet
+    # Only Forcast possible
     codeGeopot= [129]
     GeoFile = oFolder+"/129"+'_'+startDate.strftime('%Y%m%d')+'_'+endDate.strftime('%Y%m%d')+'.nc'
     struct=utils.create_request_sfc(startDate, endDate, time, step, grid, extendArea, codeGeopot, GeoFile,typeData)
@@ -253,11 +253,52 @@ def main(argv):
     Hmin = utils.computeDailyMin(humidity,nbBandByDay)
     Hmean = utils.computeDailyMean(humidity,nbBandByDay,typeData)
     
+
     """ ONLY FORCAST FOR THESE VAR"""
     typeData="forcast"
     time = ['00',"12"]
     step = [3,6,9,12]
     nbBandByDay=(12*len(time))/(len(step))+1
+    
+    """ Rayonnement global incident journalier """
+    # Only Forcast possiblet
+    codeRay= [176]
+    RayFile = oFolder+"/176"+'_'+startDate.strftime('%Y%m%d')+'_'+endDate.strftime('%Y%m%d')+'.nc'
+    struct=utils.create_request_sfc(startDate, endDate, time, step, grid, extendArea, codeRay, RayFile,typeData)
+    server.retrieve(struct)
+    Ray = utils.convertNETCDFtoDicArray(RayFile)
+    Ray = utils.computeDailyMean(Ray,nbBandByDay,typeData)
+    Ray = utils.convertWToMJ(Ray)
+    
+    """ downward surface solar radiation """
+    # Only Forcast possiblet
+    codeRay= [169]
+    RayFileDownShort = oFolder+"/169"+'_'+startDate.strftime('%Y%m%d')+'_'+endDate.strftime('%Y%m%d')+'.nc'
+    struct=utils.create_request_sfc(startDate, endDate, time, step, grid, extendArea, codeRay, RayFileDownShort,typeData)
+    server.retrieve(struct)
+    RayDownShort = utils.convertNETCDFtoDicArray(RayFileDownShort)
+    RayDownShort = utils.computeDailyMean(RayDownShort,nbBandByDay,typeData)
+    RayDownShort = utils.convertWToMJ(RayDownShort)
+    
+    """ downward surface thermal radiation """
+    # Only Forcast possiblet
+    codeRay= [175]
+    RayFileDownLong = oFolder+"/175"+'_'+startDate.strftime('%Y%m%d')+'_'+endDate.strftime('%Y%m%d')+'.nc'
+    struct=utils.create_request_sfc(startDate, endDate, time, step, grid, extendArea, codeRay, RayFileDownLong,typeData)
+    server.retrieve(struct)
+    RayDownLong = utils.convertNETCDFtoDicArray(RayFileDownLong)
+    RayDownLong = utils.computeDailyMean(RayDownLong,nbBandByDay,typeData)
+    RayDownLong = utils.convertWToMJ(RayDownLong)
+
+    """ Evaporation """
+    codeEvap= [182]
+    EvapFile = oFolder+"/182"+'_'+startDate.strftime('%Y%m%d')+'_'+endDate.strftime('%Y%m%d')+'.nc'
+    struct=utils.create_request_sfc(startDate, endDate, time, step, grid, extendArea, codeEvap, EvapFile,typeData)
+    server.retrieve(struct)
+    Evap = utils.convertNETCDFtoDicArray(EvapFile)
+    Evap = utils.computeDailyMean(Evap,nbBandByDay,typeData)
+    #Evap = utils.convertMToMm(Evap)
+    
     
     """ Precipitation """
     #NOT NEEDED FOR ETO BUT Exported
@@ -273,16 +314,6 @@ def main(argv):
     precipitation=utils.computeDailyAccumulation(precipitation,nbBandByDay,typeData)
     
     
-    """ Rayonnement global incident journalier """
-    # Only Forcast possiblet
-    codeRay= [176]
-    RayFile = oFolder+"/176"+'_'+startDate.strftime('%Y%m%d')+'_'+endDate.strftime('%Y%m%d')+'.nc'
-    struct=utils.create_request_sfc(startDate, endDate, time, step, grid, extendArea, codeRay, RayFile,typeData)
-    server.retrieve(struct)
-    Ray = utils.convertNETCDFtoDicArray(RayFile)
-    Ray = utils.computeDailyMean(Ray,nbBandByDay,typeData)
-    Ray = utils.convertWToMJ(Ray)
-    
     """ Grid of latitude [0],longitude[1] in WGS84"""
     geoTransform=utils.getGeoTransform(RayFile)
     shape=Ray[0].shape
@@ -290,7 +321,9 @@ def main(argv):
 
     """ --------------------- Compute ET0---------------------- """
     
-    ET0={}
+    ET0_0={}
+    ET0_1={}
+    ET0_2={}
     DoyList=[]
     DateList=[]
     
@@ -320,11 +353,13 @@ def main(argv):
         # Psychometric constant [kPa.°C-1]
         cte_psy = (Cp*pressureMean[i])/(epsilon*Lv) # Equation 8 Chap 3 FAO
         #Mean sturation vapor presure [kPa]
-        es = (utils.esat(pressureMean[i],Tmax[i]) + utils.esat(pressureMean[i],Tmin[i]))/2;    #Equation 12 Chap 3
+        #es = (utils.esat(pressureMean[i],Tmax[i]) + utils.esat(pressureMean[i],Tmin[i]))/2;    #Equation 12 Chap 3
+        es = (utils.eocalc(Tmax[i]-273.16)+utils.eocalc(Tmin[i]-273.16))/2    #Equation 12 Chap 3
         # Slope of saturation vapour pressure curve at air temperature [kPa.°C-1]
         delta = utils.delta_calc(Tmean[i]);                    # Equation 13 Chap 3
         # Actual vapour pressure derived from relative humidity [kPa]
-        ea = (utils.esat(pressureMean[i],Tmax[i])*(Hmax[i]/100) + utils.esat(pressureMean[i],Tmin[i])*(Hmin[i]/100))/2;      # Equation 17 Chap 3
+        #ea = (utils.esat(pressureMean[i]/100,Tmax[i]-273.16)*(Hmax[i]/100) + utils.esat(pressureMean[i]/100,Tmin[i]-273.16)*(Hmin[i]/100))/2;      # Equation 17 Chap 3
+        ea = (utils.eocalc(Tmax[i]-273.16)*(Hmax[i]/100)+utils.eocalc(Tmin[i]-273.16)*(Hmin[i]/100))/2
         # Conversion of latitude from degrees to radians
         phi = (np.pi/180)* latlon[1];     
         # Relative distance Earth-Sun
@@ -333,28 +368,39 @@ def main(argv):
         d = 0.4093*math.sin(2*math.pi*J/365 - 1.39);      # Equation 24 Chap 3
         # sunset hour angle
         ws = np.arccos(-np.tan(phi)*math.tan(d));                # Equation 25 Chap 3
+        
+        """Classical calculation FAO """
+        
         # Extraterestrial radiation for daily periods
         Ra = (24.*60/np.pi)*Gsc*dr*(ws*np.sin(phi)*np.sin(d) + np.cos(phi)*np.cos(d)*np.sin(ws))    # Equation 21 Chap 3
         # Clear sky solar radiation [MJ.m-2.day-1]
         Rso = (0.75 + 2e-5*Geo[i])*Ra;                 # Equation 37 Chap 3
         # Net solar radiation [MJ.m-2.day-1]
-        Rns = (1 - a)*Ray[i];                          # Equation 38 Chap 3
+        Rns = (1 - a)*RayDownShort[i];                          # Equation 38 Chap 3
         #
-        f=(1.35*(np.fmin(Ray[i]/Rso,1)) - 0.35);
+        f=(1.35*(np.fmin(RayDownShort[i]/Rso,1)) - 0.35);
         # Net longwave radiation [MJ.m-2.day-1]
         Rnl = StefBoltz*((Tmax[i]**4 + Tmin[i]**4)/2)*(0.34 - 0.14*np.sqrt(ea))*f; # Equation 39 Chap 3
         # Net Radiation [MJ.m-2.day-1]
-        Rn = Rns - Rnl;                             # Equation 40 Chap 3
+        Rn =Rns - Rnl;                              # Equation 40 Chap 3
+        G = 0;                                      # Equation 42 Chap 3
+        ET0_0[i] = ( 0.408*delta*( Rn-G )+ cte_psy*( 900/(Tmean[i] + 273) )*(es - ea)*vent[i] )/( delta + cte_psy*(1 + 0.34*vent[i]) );  # Equation 6 Chap 4
+        
+        
+        """ Considering product 176 = RN these equations are not needed """
+        Rn = Ray[i]
         # Soil heat flux at daily scale
         G = 0;                                      # Equation 42 Chap 3
-
-        ET0[i] = ( 0.408*delta*( Rn-G )+ cte_psy*( 900/(Tmean[i] + 273) )*(es - ea)*vent[i] )/( delta + cte_psy*(1 + 0.34*vent[i]) );  # Equation 6 Chap 4
+        ET0_1[i] = ( 0.408*delta*( Rn-G )+ cte_psy*( 900/(Tmean[i] + 273) )*(es - ea)*vent[i] )/( delta + cte_psy*(1 + 0.34*vent[i]) );  # Equation 6 Chap 4
+    
+        """ Considering product 176 Evaporation """
+        ET0_2[i] = Evap[i]
     
     if typeOutput=='RasterFile':
         #On ecrit le fichier ET0 
         geoTransform=utils.getGeoTransform(RayFile)
         shape=Ray[0].shape
-        utils.writeTiffFromDicoArray(ET0,oFolder+"/tmp.tif",shape,geoTransform)
+        utils.writeTiffFromDicoArray(ET0_0,oFolder+"/tmp.tif",shape,geoTransform)
         if 'pathToShapefile' in locals():
             utils.reprojRaster(oFolder+"/tmp.tif", oFolder+"/ET0.tif",shape, pathToShapefile)
             os.remove(oFolder+"/tmp.tif")
@@ -374,7 +420,7 @@ def main(argv):
         
     else:
         #On ecrit le fichier au format Txt
-        utils.WriteTxtFileForEachPixel(oFolder,ET0,DateList,DoyList,Ray,Tmean,Tmax,Tmin,Hmean,Hmax,Hmin,vent,precipitation,ET0,pressureMean,Geo,latlon)
+        utils.WriteTxtFileForEachPixel(oFolder,ET0_0,ET0_1,ET0_2,DateList,DoyList,Ray,RayDownShort,RayDownLong,Tmean,Tmax,Tmin,Hmean,Hmax,Hmin,vent,precipitation,pressureMean,Geo,latlon)
         utils.WritePointList(oFolder,latlon)
     
     """ ------------------------------------------- """
@@ -488,6 +534,9 @@ def main(argv):
     for i in ventFile:
         os.remove(i)
     os.remove(precipitationFile)
+    os.remove(EvapFile)
+    os.remove(RayFileDownLong)
+    os.remove(RayFileDownShort)
     
 if __name__ == '__main__':
     main(sys.argv[1:])
