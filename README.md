@@ -16,7 +16,7 @@ python python/calculateETfromERAI.py.py -help <br>
 
 <h2>Overview: What can Evapo_EraInterim do?</h2>
 
-eraInterimDownload has a main function, allow download parameters for evapo-transpiration : <br>
+Evapo_EraInterim has a main function, allow download parameters for evapo-transpiration : <br>
 Temperature, <br>
 Wind speed, <br>
 Net Solar radiation <br>
@@ -30,6 +30,7 @@ It's possible to compute Et0 over large period of time, the final result will ha
 <u>Three paramaters are mandatory: <br><br></u>
 <b>--Interval needed : </b><br>
 init date <dateStart YYYY-MM-DD>' AND end date <dateEnd YY-MM-DD>'
+init date and end date coul not exceed, at the time of writing 2014-31-12
 <br><br> 
 <b>--Area needed </b><br>
 shapefile <pathToShapefile> (srs is not important because it will be reprojected in WGS84)
@@ -57,11 +58,11 @@ the grid of output data. It should be from 0.125 to 3 (almost  12km to 300km pix
 run for an output of 80km, the data are interpolasized for finest grid.
 default is 0.75
 <br><br>
-python eraInterimDownload.py  -i 2013-11-08 -e 2013-12-09 -E xmin,ymax,xmax,ymin -g 0,125'
+python calculateETfromERAI.py  -i 2013-11-08 -e 2013-12-09 -E xmin,ymax,xmax,ymin -g 0,125'
 <br><br>
 <b>--calculateETfromERAI <Path to downloaded EvapoTranspiration> (default /home/user/eraInterim)'</b>
 <br><br>
-python eraInterimDownload.py -i 2011-10-01 -e 2011-10-02 -s PATH/TO/SHAPEFILE -o PATH/TO/FILE'
+python calculateETfromERAI.py -i 2011-10-01 -e 2011-10-02 -s PATH/TO/SHAPEFILE -o PATH/TO/FILE'
 All downloaded raster are TIF 
 <br><br>
 <b>--proxy <proxy : True/False></b> (default False)
