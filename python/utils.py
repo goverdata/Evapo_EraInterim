@@ -320,6 +320,15 @@ def convertPaToKgPa(dicoP):
         pressure[i]=PArray
     return pressure
 
+def convertMToMm(dicoEvap):
+    evap={}
+    for i in dicoEvap:
+        RArray=(dicoEvap[i]*(10**3))
+
+        evap[i]=RArray
+        
+    return evap
+
 def convertWToMJ(dicoRay):
 
     rayonnement={}
@@ -359,10 +368,7 @@ def computeDailyAccumulation(dicoBand,nbBandByDay,typeData):
     
     accumulation={}
     for i in range(0,len(dicoBand.keys())/nbBandByDay):
-        if (typeData == "analyse"):
-            maxRange=nbBandByDay+i*nbBandByDay
-        else:
-            maxRange=nbBandByDay+i*nbBandByDay-1
+        maxRange=nbBandByDay+i*nbBandByDay
             
         #on ne prend pas la dernière bande... correspondante à 00-->3h
         for j in range (i*nbBandByDay,maxRange):
@@ -386,10 +392,7 @@ def computeDailyMean(dicoBand,nbBandByDay,typeData):
                           [0,1,0]])
     
     for i in range(0,len(dicoBand.keys())/nbBandByDay):
-        if (typeData == "analyse"):
-            maxRange=nbBandByDay+i*nbBandByDay
-        else:
-            maxRange=nbBandByDay+i*nbBandByDay-1
+        maxRange=nbBandByDay+i*nbBandByDay
         #on ne prend pas la dernière bande... correspondante à 00-->3h
         for j in range (i*nbBandByDay,maxRange):
             if "array" in locals():
@@ -405,6 +408,7 @@ def computeDailyMean(dicoBand,nbBandByDay,typeData):
         del array
 
         #utilisation de la fonction nanmean --> bcp plus simple
+
         mean[i]=mean[i]/mask
         indices = np.where(np.isnan(mean[i]))
         results = ndimage.generic_filter(mean[i], meanCalc, footprint=footprint)
@@ -416,10 +420,7 @@ def computeDailyMean(dicoBand,nbBandByDay,typeData):
 def computeDailyMax(dicoBand,nbBandByDay,typeData=None):
     maxB={}
     for i in range(0,len(dicoBand.keys())/nbBandByDay):
-        if (typeData == "analyse"):
-            maxRange=nbBandByDay+i*nbBandByDay
-        else:
-            maxRange=nbBandByDay+i*nbBandByDay-1
+        maxRange=nbBandByDay+i*nbBandByDay
         #on ne prend pas la dernière bande... correspondante à 00-->3h si 
         for j in range (i*nbBandByDay,maxRange):
             if "array" in locals():
@@ -434,10 +435,7 @@ def computeDailyMax(dicoBand,nbBandByDay,typeData=None):
 def computeDailyMin(dicoBand,nbBandByDay,typeData=None):
     minB={}
     for i in range(0,len(dicoBand.keys())/nbBandByDay):
-        if (typeData == "analyse"):
-            maxRange=nbBandByDay+i*nbBandByDay
-        else:
-            maxRange=nbBandByDay+i*nbBandByDay-1
+        maxRange=nbBandByDay+i*nbBandByDay
         #on ne prend pas la dernière bande... correspondante à 00-->3h
         for j in range (i*nbBandByDay,maxRange):
             np.putmask(dicoBand.items()[j][1],dicoBand.items()[j][1]==0,np.nan)
@@ -489,12 +487,18 @@ def esat(pressure,T):
         Pressure en hpa --> convert to kPa
         T en °C
     """
-
     pressure=pressure/10
     d_es = 0.61121*np.exp(np.multiply(T,17.502)/(T+240.97))
     d_f = 1.00072+pressure*(3.2+0.00059*pow(T,2))/100000.0
                         
     return d_es*d_f
+
+def eocalc(T):
+    """ Saturation vapor pressure at the air temperature [KPa]
+        T en °C
+    """
+    eo_calc=0.6108*np.exp(17.27*T/(T+237.3))
+    return eo_calc
 
 def delta_calc(T):
     # Slope of saturation vapour pressure curve at air temperature [kPa.°C-1]
@@ -582,12 +586,12 @@ def writeTiffFromDicoArray(DicoArray,outputImg,shape,geoparam,proj=None,format=g
     
     dst_ds.SetGeoTransform((originX, pixelWidth, 0, originY, 0, pixelHeight))
 
-def WriteTxtFileForEachPixel(outputFolder,et0,DateList,DoyList,Ray,Tmean,Tmax,Tmin,Hmean,Hmax,Hmin,vent,precipitation,ET0,pressure,Geo,latlon):
+def WriteTxtFileForEachPixel(outputFolder,et0_0,et0_1,et0_2,DateList,DoyList,Ray,RayShort,RayLong,Tmean,Tmax,Tmin,Hmean,Hmax,Hmin,vent,precipitation,pressure,Geo,latlon):
     """ Write a Txtfile """
     
     
-    for i in range(0,et0[0].shape[0]):
-        for j in range(0,et0[0].shape[1]):
+    for i in range(0,et0_0[0].shape[0]):
+        for j in range(0,et0_0[0].shape[1]):
             lat=latlon[0][i][j]
             lon=latlon[1][i][j]
             numero = str(round(lat,2)).replace('.','')+str(round(lon,2)).replace('.','')
@@ -596,13 +600,13 @@ def WriteTxtFileForEachPixel(outputFolder,et0,DateList,DoyList,Ray,Tmean,Tmax,Tm
             f = open(pathTodateFolder,'w+')
             f.write('numero;altitude;lat/lon(WGS84)\n')
             f.write(str(numero)+'\t ; '+str(Geo[0][i][j])+'\t ; '+str(lat)+'/'+str(lon)+'\n')
-            f.write('ANNEE MOIS JOUR DOY RGCUM TAMEAN TAMAX TAMIN RHMEAN RHMAX RHMIN VUMEAN PRESSURE PRECIP ET0FAO56\n')
-            f.write('[YYYY] [MM] [DD] [1-365] [MJ.m-2.jour-1] [Kelvin] [Kelvin] [Kelvin] [%] [%] [%] [m.s-1] [mm.d-1] [mm.d-1] [kPa] [mm.d-1]\n')
+            f.write('ANNEE\tMOIS\tJOUR\tDOY\tRGSURF\tRGLONG\tRGSHORT\tTAMEAN\tTAMAX\tTAMIN\tRHMEAN\tRHMAX\tRHMIN\tVUMEAN\tPRECIP\tPRESSURE\tET0FAO56\tET0SolarEra\tEvapEraInterim\n')
+            f.write('[YYYY]\t[MM]\t[DD]\t[1-365]\t[MJ.m-2.jour-1]\t[MJ.m-2.jour-1]\t[MJ.m-2.jour-1]\t[Kelvin]\t[Kelvin]\t[Kelvin]\t[%]\t[%]\t[%]\t[m.s-1]\t[kPa]\t[mm.d-1]\t[mm.d-1]\t[mm.d-1]\t[mm.d-1]\n')
             for d in range(0,len(DateList)):
                 year=DateList[d].year
                 month=DateList[d].month
                 day=DateList[d].day
-                f.write(str(year)+'\t'+str(month)+'\t'+str(day)+'\t'+ str(DoyList[d])+'\t'+str(Ray[d][i][j])+'\t'+str(Tmean[d][i][j])+'\t'+str(Tmax[d][i][j])+'\t'+str(Tmin[d][i][j])+'\t'+str(Hmean[d][i][j])+'\t'+str(Hmax[d][i][j])+'\t'+str(Hmin[d][i][j])+'\t'+ str(vent[d][i][j])+'\t'+str(precipitation[d][i][j])+'\t'+str(pressure[d][i][j])+'\t'+str(et0[d][i][j])+'\n')
+                f.write(str(year)+'\t'+str(month)+'\t'+str(day)+'\t'+ str(DoyList[d])+'\t'+str(Ray[d][i][j])+'\t'+str(RayShort[d][i][j])+'\t'+str(RayLong[d][i][j])+'\t'+str(Tmean[d][i][j])+'\t'+str(Tmax[d][i][j])+'\t'+str(Tmin[d][i][j])+'\t'+str(Hmean[d][i][j])+'\t'+str(Hmax[d][i][j])+'\t'+str(Hmin[d][i][j])+'\t'+ str(vent[d][i][j])+'\t'+str(precipitation[d][i][j])+'\t'+str(pressure[d][i][j])+'\t'+str(et0_0[d][i][j])+'\t'+str(et0_1[d][i][j])+'\t'+str(et0_2[d][i][j])+'\n')
             f.close()
     return pathTodateFolder
     
