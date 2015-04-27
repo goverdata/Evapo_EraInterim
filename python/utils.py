@@ -21,6 +21,7 @@ import shutil
 import math
 from pyspatialite._spatialite import Row
 import scipy.ndimage as ndimage
+import pyproj as pp
     
 def checkForFile(pathToFile):
     if os.path.isfile(pathToFile):
@@ -533,7 +534,7 @@ def getProj(pathToShape):
     layer = dataSource.GetLayer()
     srs = layer.GetSpatialRef()
     
-    return srs.ExportToWkt()    
+    return srs.ExportToProj4()    
 
 def getShape(pathToImg):
         
@@ -554,9 +555,8 @@ def getCentroidLatFromArray(shape,geotransform,grid):
     originY =  geotransform[1]
     
     for index in np.ndenumerate(lat):
-        lat.itemset(index[0], float(originX)+float(index[0][0])*float(grid)+(float(grid)/2))
-        lon.itemset(index[0], float(originY)-float(index[0][1])*float(grid)-(float(grid)/2))
-
+        lat.itemset(index[0], float(originX)+float(index[0][1])*float(grid)+(float(grid)/2))
+        lon.itemset(index[0], float(originY)-float(index[0][0])*float(grid)-(float(grid)/2))
     
     dicoLatLong={}
     dicoLatLong[0]=lat
@@ -586,7 +586,7 @@ def writeTiffFromDicoArray(DicoArray,outputImg,shape,geoparam,proj=None,format=g
     
     dst_ds.SetGeoTransform((originX, pixelWidth, 0, originY, 0, pixelHeight))
 
-def WriteTxtFileForEachPixel(outputFolder,et0_0,et0_1,et0_2,DateList,DoyList,Ray,RayShort,RayLong,Tmean,Tmax,Tmin,Hmean,Hmax,Hmin,vent,precipitation,pressure,Geo,latlon):
+def WriteTxtFileForEachPixel(outputFolder,et0_0,et0_1,et0_2,DateList,DoyList,Ray,RayShort,RayLong,Tmean,Tmax,Tmin,Hmean,Hmax,Hmin,vent,precipitation,pressure,Geo,latlon,projShape):
     """ Write a Txtfile """
     
     
@@ -594,14 +594,17 @@ def WriteTxtFileForEachPixel(outputFolder,et0_0,et0_1,et0_2,DateList,DoyList,Ray
         for j in range(0,et0_0[0].shape[1]):
             lat=latlon[0][i][j]
             lon=latlon[1][i][j]
+            p1 = pp.Proj(projShape)
+            latP,lonP = p1(lat,lon)
+
             numero = str(round(lat,2)).replace('.','')+str(round(lon,2)).replace('.','')
             
             pathTodateFolder=outputFolder+'/POINT_'+numero+'.txt'
             f = open(pathTodateFolder,'w+')
-            f.write('numero;altitude;lat/lon(WGS84)\n')
-            f.write(str(numero)+'\t ; '+str(Geo[0][i][j])+'\t ; '+str(lat)+'/'+str(lon)+'\n')
+            f.write('numero;altitude;lat/lon(WGS84);lat/lon(initial)\n')
+            f.write(str(numero)+'\t ; '+str(Geo[0][i][j])+'\t ; '+str(lat)+'/'+str(lon)+';'+str(latP)+'/'+str(lonP)+'\n')
             f.write('ANNEE\tMOIS\tJOUR\tDOY\tRGSURF\tRGLONG\tRGSHORT\tTAMEAN\tTAMAX\tTAMIN\tRHMEAN\tRHMAX\tRHMIN\tVUMEAN\tPRECIP\tPRESSURE\tET0FAO56\tET0SolarEra\tEvapEraInterim\n')
-            f.write('[YYYY]\t[MM]\t[DD]\t[1-365]\t[MJ.m-2.jour-1]\t[MJ.m-2.jour-1]\t[MJ.m-2.jour-1]\t[Kelvin]\t[Kelvin]\t[Kelvin]\t[%]\t[%]\t[%]\t[m.s-1]\t[kPa]\t[mm.d-1]\t[mm.d-1]\t[mm.d-1]\t[mm.d-1]\n')
+            f.write('[YYYY]\t[MM]\t[DD]\t[1-365]\t[MJ.m-2.jour-1]\t[MJ.m-2.jour-1]\t[MJ.m-2.jour-1]\t[Kelvin]\t[Kelvin]\t[Kelvin]\t[%]\t[%]\t[%]\t[m.s-1]\t[m.d-1]\t[kPa]\t[mm.d-1]\t[mm.d-1]\t[mm.d-1]\n')
             for d in range(0,len(DateList)):
                 year=DateList[d].year
                 month=DateList[d].month
@@ -610,17 +613,20 @@ def WriteTxtFileForEachPixel(outputFolder,et0_0,et0_1,et0_2,DateList,DoyList,Ray
             f.close()
     return pathTodateFolder
     
-def WritePointList(outputFolder,latlon):
+def WritePointList(outputFolder,latlon,projShape):
     
     pathTodateFolder=outputFolder+'/ListeStations.txt'
     f = open(pathTodateFolder,'w+')
-    f.write('numero;lat/lon(WGS84)\n')
+    f.write('numero;lat(WGS84);lon(WGS84);lat(initial);lon(initial)\n')
     for i in range(0,latlon[0].shape[0]):
         for j in range(0,latlon[0].shape[1]):
             lat=latlon[0][i][j]
             lon=latlon[1][i][j]
+            p1 = pp.Proj(projShape)
+            latP,lonP = p1(lat,lon)
+            
             numero = str(round(lat,2)).replace('.','')+str(round(lon,2)).replace('.','')
-            f.write(str(numero)+';'+str(lat)+';'+str(lon)+'\n')
+            f.write(str(numero)+';'+str(lat)+';'+str(lon)+';'+str(latP)+';'+str(lonP)+'\n')
     f.close()
 
 

@@ -14,6 +14,7 @@ import getopt
 import os
 import numpy as np
 import math
+import calendar
 
 from datetime import date,datetime,timedelta
 import utils as utils
@@ -108,7 +109,11 @@ def main(argv):
     
     if (startDate>endDate):
         exit('startDate could not be greater than endDate')
-    if (startDate>date(2014,12,31) or endDate>date(2014,12,31) ):
+
+    today=date.today()
+    limitDate = today - timedelta(days=31*3)
+    limitDate=date(limitDate.year,limitDate.month,calendar.monthrange(limitDate.year,limitDate.month)[1])
+    if (startDate>limitDate or endDate>limitDate ):
         exit('date could not exceed 2014-12-31')
     
     try:
@@ -420,8 +425,9 @@ def main(argv):
         
     else:
         #On ecrit le fichier au format Txt
-        utils.WriteTxtFileForEachPixel(oFolder,ET0_0,ET0_1,ET0_2,DateList,DoyList,Ray,RayDownShort,RayDownLong,Tmean,Tmax,Tmin,Hmean,Hmax,Hmin,vent,precipitation,pressureMean,Geo,latlon)
-        utils.WritePointList(oFolder,latlon)
+        proj=utils.getProj(pathToShapefile)
+        utils.WriteTxtFileForEachPixel(oFolder,ET0_0,ET0_1,ET0_2,DateList,DoyList,Ray,RayDownShort,RayDownLong,Tmean,Tmax,Tmin,Hmean,Hmax,Hmin,vent,precipitation,pressureMean,Geo,latlon,proj)
+        utils.WritePointList(oFolder,latlon,proj)
     
     """ ------------------------------------------- """
     if(temporaryFile):
